@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient, RealtimeChannel } from '@supabase/supabase-js';
 
-const supabaseUrl = 'http://localhost:54321';
-const supabaseKey = 'public-anon-key';
-const supabase = createClient(supabaseUrl, supabaseKey);
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabase: SupabaseClient = createClient(supabaseUrl, supabaseKey);
 
 interface Reading {
     id: string;
@@ -13,30 +13,45 @@ interface Reading {
     recorded_at: string;
 }
 
-const App = () => {
+const App: React.FC = () => {
     const [readings, setReadings] = useState<Reading[]>([]);
 
     useEffect(() => {
-        // Initial fetch
-        supabase.from<Reading>('readings').select('*').then(res => {
-            if (res.data) setReadings(res.data);
-        });
+        const fetchReadings = async () => {
+            const { data, error } = await supabase.from('readings').select('*');
+            if (error) console.error('Error fetching readings:', error);
+            else setReadings(data as Reading[] || []);
+        };
+        fetchReadings();
 
-        // Subscribe to realtime updates
-        const channel = supabase.channel('realtime')
-            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'readings' }, (payload: any) => {
-                setReadings(prev => [...prev, payload.new as Reading]);
-            })
+        const channel: RealtimeChannel = supabase.channel('realtime')
+            .on(
+                'postgres_changes',
+                { event: 'INSERT', schema: 'public', table: 'readings' },
+                (payload: any) => setReadings(prev => [...prev, payload.new as Reading])
+            )
             .subscribe();
+
+        const interval = setInterval(async () => {
+            if (readings.length === 0) return;
+            const randomReading = {
+                session_id: readings[0].session_id,
+                asset_id: readings[0].asset_id,
+                value: Math.random() * 100,
+                recorded_at: new Date().toISOString(),
+            };
+            await supabase.from('readings').insert([randomReading]);
+        }, 5000);
 
         return () => {
             supabase.removeChannel(channel);
+            clearInterval(interval);
         };
-    }, []);
+    }, [readings]);
 
     return (
         <div style={{ padding: 20 }}>
-            <h1>Realtime Readings</h1>
+            <h1>Realtime Readings Demo</h1>
             <table border={1} cellPadding={5}>
                 <thead>
                     <tr>

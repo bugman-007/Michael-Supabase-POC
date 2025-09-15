@@ -1,9 +1,9 @@
 {
-    "name": "frontend",
+    "name": "supabase-realtime-poc",
     "version": "1.0.0",
     "private": true,
     "scripts": {
-        "dev": "vite --host",
+        "dev": "vite",
         "build": "vite build",
         "preview": "vite preview"
     },
