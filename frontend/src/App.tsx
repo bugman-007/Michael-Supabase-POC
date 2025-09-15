@@ -18,7 +18,7 @@ const App: React.FC = () => {
 
     useEffect(() => {
         const fetchReadings = async () => {
-            const { data, error } = await supabase.from('readings').select('*');
+            const { data, error } = await supabase.from('temp').select('*');
             if (error) console.error('Error fetching readings:', error);
             else setReadings(data as Reading[] || []);
         };
